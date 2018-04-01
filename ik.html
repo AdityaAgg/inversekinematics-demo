@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta charset=utf-8>
+	<title>Inverse Kinematics Chain</title>
+	<style>
+		body {
+			margin: 0;
+		}
+
+		canvas {
+			width: 100%;
+			height: 100%
+		}
+	</style>
+</head>
+
+<body>
+	<script src="js/three.min.js"></script>
+	<script>
+
+		function updateIK(group, point) {
+			console.log(group)
+			if(group.children.length > 4) {
+				updateIK(group.children[4], point);
+			}
+			console.log(group.children[0].geometry.vertices)
+			let subtractVector = new THREE.Vector3();
+			subtractVector = subtractVector.subVectors(group.children[0].geometry.vertices[1], group.children[0].geometry.vertices[2]);
+			console.log(subtractVector);
+			let currDirection = subtractVector.normalize();
+			subtractVector = subtractVector.subVectors(group.children[0].geometry.vertices[1], point);
+			let expectedDirection = subtractVector.normalize();
+			let theta = Math.acos(currDirection.dot(expectedDirection))
+			
+		}
+		// Our Javascript will go here.
+		var scene = new THREE.Scene();
+		var camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000);
+		var material = new THREE.LineBasicMaterial({
+			color: 0xffffff
+		});
+		const MINI = 2.0/(1 + Math.sqrt(3.0));
+		const LARGE = MINI * Math.sqrt(3.0);
+
+		const START = 4.0 - MINI;
+		const boneCount = 4;
+		let groupList = [];
+		for (let i = 0; i < boneCount; ++i) {
+
+
+
+			let vecAMiddle = new THREE.Vector3(0, (START - (i * (2.0 - MINI)) + MINI), -5);
+			let vecBMiddle  = new THREE.Vector3(0, START - (i * (2.0 - MINI)), -5);
+			let vecCMiddle = new THREE.Vector3(0, START - (i * (2.0 - MINI)) - LARGE, -5);
+
+
+
+			let vecBRight  = new THREE.Vector3(MINI, START - (i * (2.0 - MINI)), -5);
+			let vecBLeft  = new THREE.Vector3(-1 * MINI, START - (i * (2.0 - MINI)), -5);
+
+
+			var middleGeometry = new THREE.Geometry();
+			middleGeometry.vertices.push(vecAMiddle);
+			middleGeometry.vertices.push(vecBMiddle);
+			middleGeometry.vertices.push(vecCMiddle);
+			var l1 = new THREE.Line(middleGeometry, material);
+
+			var rightGeometry = new THREE.Geometry();
+			rightGeometry.vertices.push(vecAMiddle, vecBRight, vecCMiddle);
+			var l2 = new THREE.Line(rightGeometry, material);
+
+			var leftGeometry = new THREE.Geometry();
+			leftGeometry.vertices.push(vecAMiddle, vecBLeft, vecCMiddle);
+			var l3 = new THREE.Line(leftGeometry, material);
+
+			var cross = new THREE.Geometry();
+			cross.vertices.push(vecBLeft, vecBRight);
+			var l4 = new THREE.Line(cross, material);
+
+
+			var group = new THREE.Group();
+			group.add(l1);
+			group.add(l2);
+			group.add(l3);
+			group.add(l4);
+			if( i - 1 > -1) {
+				group.add(groupList[i - 1]);
+			}
+
+			groupList.push(group);
+
+
+
+
+		}
+
+		let rootNode = groupList[groupList.length - 1];
+		scene.add(rootNode);
+		//while(1==1)
+		updateIK(group, new THREE.Vector3(2, 2, 2));
+
+
+
+
+
+
+
+
+
+
+
+
+		var renderer = new THREE.WebGLRenderer();
+		renderer.setSize(window.innerWidth, window.innerHeight);
+
+		renderer.render(scene, camera);
+
+		document.body.appendChild(renderer.domElement);
+	</script>
+</body>
+
+</html>
