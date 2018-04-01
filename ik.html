@@ -20,20 +20,42 @@
 	<script src="js/three.min.js"></script>
 	<script>
 
-		function updateIK(group, point) {
-			console.log(group)
-			if(group.children.length > 4) {
-				updateIK(group.children[4], point);
+		function updateIK(geometryNode, point) {
+			if(geometryNode.children.length > 4) {
+				geometryNode.parent.updateMatrixWorld();
+				geometryNode.updateMatrixWorld();
+				updateIK(geometryNode.children[4].children[0], point);
 			}
-			console.log(group.children[0].geometry.vertices)
+
 			let subtractVector = new THREE.Vector3();
-			subtractVector = subtractVector.subVectors(group.children[0].geometry.vertices[1], group.children[0].geometry.vertices[2]);
-			console.log(subtractVector);
+			geometryNode.parent.updateMatrixWorld();
+			geometryNode.updateMatrixWorld();
+			console.log(geometryNode.children[0].geometry.vertices[1]);
+			console.log(geometryNode.children[0].geometry.vertices[2]);
+			var vectorA = geometryNode.children[0].geometry.vertices[1].clone();
+			var vectorB = geometryNode.children[0].geometry.vertices[2].clone();
+			console.log(geometryNode.matrixWorld)
+			vectorA.applyMatrix4(geometryNode.matrixWorld)
+			vectorB.applyMatrix4(geometryNode.matrixWorld)
+
+			subtractVector = subtractVector.subVectors(vectorA, vectorB);
 			let currDirection = subtractVector.normalize();
-			subtractVector = subtractVector.subVectors(group.children[0].geometry.vertices[1], point);
-			let expectedDirection = subtractVector.normalize();
+
+			let subtractVectorTwo = new THREE.Vector3()
+			subtractVector = subtractVectorTwo.subVectors(vectorA, point);
+			let expectedDirection = subtractVectorTwo.normalize();
+
 			let theta = Math.acos(currDirection.dot(expectedDirection))
-			
+
+			//rotation transformations
+
+
+
+
+			console.log(theta)
+			geometryNode.rotateZ(theta)
+			//group.rotateOnAxis(new THREE.Vector3(0, 0, 1), theta);
+
 		}
 		// Our Javascript will go here.
 		var scene = new THREE.Scene();
@@ -44,21 +66,27 @@
 		const MINI = 2.0/(1 + Math.sqrt(3.0));
 		const LARGE = MINI * Math.sqrt(3.0);
 
-		const START = 4.0 - MINI;
+
 		const boneCount = 4;
-		let groupList = [];
+		const boneLength = LARGE;
+		let lastGroup = null;
+		var root = new THREE.Group();
 		for (let i = 0; i < boneCount; ++i) {
 
 
 
-			let vecAMiddle = new THREE.Vector3(0, (START - (i * (2.0 - MINI)) + MINI), -5);
-			let vecBMiddle  = new THREE.Vector3(0, START - (i * (2.0 - MINI)), -5);
-			let vecCMiddle = new THREE.Vector3(0, START - (i * (2.0 - MINI)) - LARGE, -5);
+			// let vecAMiddle = new THREE.Vector3(0, (START - (i * (2.0 - MINI)) + MINI), -5);
+			// let vecBMiddle  = new THREE.Vector3(0, START - (i * (2.0 - MINI)), -5);
+			// let vecCMiddle = new THREE.Vector3(0, START - (i * (2.0 - MINI)) - LARGE, -5);
 
+			let vecAMiddle = new THREE.Vector3(0, MINI, 0);
+			let vecBMiddle = new THREE.Vector3(0, 0, 0);
+			let vecCMiddle = new THREE.Vector3(0, -1 * LARGE, 0);
 
-
-			let vecBRight  = new THREE.Vector3(MINI, START - (i * (2.0 - MINI)), -5);
-			let vecBLeft  = new THREE.Vector3(-1 * MINI, START - (i * (2.0 - MINI)), -5);
+			//let vecBRight  = new THREE.Vector3(MINI, START - (i * (2.0 - MINI)), -5);
+			//let vecBLeft  = new THREE.Vector3(-1 * MINI, START - (i * (2.0 - MINI)), -5);
+			let vecBRight  = new THREE.Vector3(MINI, 0, 0);
+			let vecBLeft  = new THREE.Vector3(-1 * MINI, 0, 0);
 
 
 			var middleGeometry = new THREE.Geometry();
@@ -66,6 +94,8 @@
 			middleGeometry.vertices.push(vecBMiddle);
 			middleGeometry.vertices.push(vecCMiddle);
 			var l1 = new THREE.Line(middleGeometry, material);
+
+
 
 			var rightGeometry = new THREE.Geometry();
 			rightGeometry.vertices.push(vecAMiddle, vecBRight, vecCMiddle);
@@ -79,29 +109,32 @@
 			cross.vertices.push(vecBLeft, vecBRight);
 			var l4 = new THREE.Line(cross, material);
 
+			var geometryNode = new THREE.Group();
+			geometryNode.add(l1);
+			geometryNode.add(l2);
+			geometryNode.add(l3);
+			geometryNode.add(l4);
 
-			var group = new THREE.Group();
-			group.add(l1);
-			group.add(l2);
-			group.add(l3);
-			group.add(l4);
-			if( i - 1 > -1) {
-				group.add(groupList[i - 1]);
+			var translateNode;
+
+			if(i!=0) {
+				translateNode = new THREE.Group();
+				translateNode.translateY(-1 * LARGE);
+			} else {
+				translateNode = root;
+				console.log(translateNode);
 			}
+			translateNode.add(geometryNode);
 
-			groupList.push(group);
-
-
-
-
+			if(lastGroup !=null) {
+				lastGroup.add(translateNode);
+			}
+			lastGroup = geometryNode;
 		}
-
-		let rootNode = groupList[groupList.length - 1];
-		scene.add(rootNode);
-		//while(1==1)
-		updateIK(group, new THREE.Vector3(2, 2, 2));
-
-
+		root.translateZ(-5);
+		root.translateY(4);
+		//console.log(root);
+		scene.add(root);
 
 
 
@@ -115,7 +148,13 @@
 		var renderer = new THREE.WebGLRenderer();
 		renderer.setSize(window.innerWidth, window.innerHeight);
 
-		renderer.render(scene, camera);
+		function animate() {
+			updateIK(root.children[0], new THREE.Vector3(-2, -4 , -5));
+			requestAnimationFrame( animate );
+			renderer.render( scene, camera );
+
+		}
+		animate();
 
 		document.body.appendChild(renderer.domElement);
 	</script>
